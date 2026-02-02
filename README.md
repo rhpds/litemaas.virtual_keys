@@ -104,14 +104,17 @@ ansible-galaxy collection install litemaas.virtual_keys
 |----------|-------------|---------|
 | `litellm_vkey_master_key` | LiteLLM master API key | `sk-xxxxx` |
 
-**Method 2: Username/Password (Interactive use)**
+**Method 2: Username/Password (Alternative)**
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `litellm_vkey_username` | LiteLLM username | `admin` |
 | `litellm_vkey_password` | LiteLLM password | `password123` |
 
-Note: Username/password authentication requires the LiteLLM `/login` endpoint to be available.
+**Important Notes:**
+- Username/password authentication requires the LiteLLM `/login` endpoint to be available
+- **SSO/OAuth limitations**: If your LiteLLM uses SSO (OAuth/OIDC), username/password won't work as those require browser-based authentication flows
+- For SSO environments, you must obtain a master key or personal access token from LiteLLM admins and use Method 1
 
 ### Optional Variables
 

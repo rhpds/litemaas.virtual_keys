@@ -18,7 +18,36 @@ ansible-galaxy collection install litemaas.virtual_keys
 
 ## Quick Start
 
-### Create a Single Key
+### Create a Single Key (OpenShift SSO)
+
+If your LiteLLM uses "Login with OpenShift" SSO:
+
+```yaml
+---
+- name: Create LiteLLM Virtual Key
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Create virtual key
+      ansible.builtin.include_role:
+        name: litemaas.virtual_keys.manage_keys
+      vars:
+        litellm_vkey_state: present
+        litellm_vkey_api_url: "https://litellm.apps.cluster.com"
+        litellm_vkey_use_openshift_token: true  # Auto-detect OpenShift token
+        litellm_vkey_alias: "my-dev-project"
+        litellm_vkey_user_id: "developer@example.com"
+        litellm_vkey_models:
+          - "openai/granite-3-2-8b-instruct"
+        litellm_vkey_duration: "7d"
+```
+
+Prerequisites: `oc login https://api.cluster.com:6443` first
+
+### Create a Single Key (Master Key)
+
+If you have a master key:
 
 ```yaml
 ---
@@ -98,13 +127,29 @@ ansible-galaxy collection install litemaas.virtual_keys
 
 ### Authentication (Choose ONE Method)
 
-**Method 1: Master Key (Recommended for automation)**
+**Method 1: Master Key (If available)**
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `litellm_vkey_master_key` | LiteLLM master API key | `sk-xxxxx` |
 
-**Method 2: Username/Password (Alternative)**
+Best for: Non-SSO deployments or when you have admin-provided master key.
+
+**Method 2: OpenShift Token (Recommended for SSO deployments)**
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `litellm_vkey_use_openshift_token` | Auto-detect OpenShift token | `true` |
+| `litellm_vkey_openshift_token` | Manual OpenShift token (optional) | `sha256~xxxxx` |
+
+Best for: LiteLLM deployed on OpenShift with "Login with OpenShift" SSO.
+
+**How it works:**
+1. If `litellm_vkey_openshift_token` is provided, uses that token
+2. Otherwise tries `oc whoami -t` (if you're logged in with `oc login`)
+3. Otherwise reads from `/var/run/secrets/kubernetes.io/serviceaccount/token` (if running in a pod)
+
+**Method 3: Username/Password (Legacy)**
 
 | Variable | Description | Example |
 |----------|-------------|---------|
@@ -113,8 +158,8 @@ ansible-galaxy collection install litemaas.virtual_keys
 
 **Important Notes:**
 - Username/password authentication requires the LiteLLM `/login` endpoint to be available
-- **SSO/OAuth limitations**: If your LiteLLM uses SSO (OAuth/OIDC), username/password won't work as those require browser-based authentication flows
-- For SSO environments, you must obtain a master key or personal access token from LiteLLM admins and use Method 1
+- **Does not work with SSO** (OAuth/OIDC) - those require browser-based authentication flows
+- For OpenShift SSO deployments, use Method 2 (OpenShift Token)
 
 ### Optional Variables
 
@@ -175,7 +220,8 @@ litellm_vkey_result:
 
 See [`playbooks/examples/`](playbooks/examples/) for complete example playbooks:
 
-- [`create_single_key.yml`](playbooks/examples/create_single_key.yml) - Single-user key creation
+- [`create_key_openshift_sso.yml`](playbooks/examples/create_key_openshift_sso.yml) - **OpenShift SSO authentication** (recommended for OpenShift deployments)
+- [`create_single_key.yml`](playbooks/examples/create_single_key.yml) - Single-user key creation (master key)
 - [`delete_single_key.yml`](playbooks/examples/delete_single_key.yml) - Delete a key
 - [`create_workshop_keys.yml`](playbooks/examples/create_workshop_keys.yml) - Multi-user workshop provisioning
 

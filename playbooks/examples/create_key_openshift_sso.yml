@@ -1,0 +1,50 @@
+---
+- name: Create LiteLLM Virtual Key (OpenShift SSO Example)
+  hosts: localhost
+  gather_facts: false
+
+  # This example shows how to use OpenShift token authentication
+  # when LiteLLM is deployed with "Login with OpenShift" SSO
+
+  tasks:
+    - name: Create virtual key using OpenShift token
+      ansible.builtin.include_role:
+        name: litemaas.virtual_keys.manage_keys
+      vars:
+        litellm_vkey_state: present
+        litellm_vkey_api_url: "https://litellm.apps.cluster.example.com"
+
+        # Method 1: Auto-detect token (recommended)
+        litellm_vkey_use_openshift_token: true
+
+        # Method 2: Provide token manually (alternative)
+        # litellm_vkey_openshift_token: "{{ lookup('env', 'OPENSHIFT_TOKEN') }}"
+
+        litellm_vkey_alias: "my-dev-project"
+        litellm_vkey_user_id: "developer@example.com"
+        litellm_vkey_models:
+          - "openai/granite-3-2-8b-instruct"
+          - "openai/mistral-7b-instruct"
+        litellm_vkey_duration: "7d"
+
+    - name: Display the key
+      ansible.builtin.debug:
+        msg: |
+          API Key Created!
+
+          Export this to use with LiteLLM:
+          export OPENAI_API_BASE="{{ litellm_vkey_result.api_base_url }}"
+          export OPENAI_API_KEY="{{ litellm_vkey_result.key }}"
+
+          Available models: {{ litellm_vkey_result.models | join(', ') }}
+          Valid for: {{ litellm_vkey_result.duration }}
+
+# Prerequisites:
+# 1. Login to OpenShift first:
+#    oc login https://api.cluster.example.com:6443
+#
+# 2. OR run this playbook from within an OpenShift pod with a service account
+#
+# 3. OR manually provide token:
+#    export OPENSHIFT_TOKEN=$(oc whoami -t)
+#    ansible-playbook this-playbook.yml

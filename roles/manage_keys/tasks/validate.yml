@@ -24,12 +24,16 @@
   ansible.builtin.assert:
     that: >
       (litellm_vkey_master_key is defined and litellm_vkey_master_key | length > 0) or
+      (litellm_vkey_use_openshift_token | bool) or
+      (litellm_vkey_openshift_token is defined and litellm_vkey_openshift_token | length > 0) or
       (litellm_vkey_username is defined and litellm_vkey_username | length > 0 and
        litellm_vkey_password is defined and litellm_vkey_password | length > 0)
     fail_msg: |
       Authentication required. Provide ONE of:
         1. litellm_vkey_master_key: Master API key (sk-xxxxx)
-        2. litellm_vkey_username AND litellm_vkey_password: Username and password
+        2. litellm_vkey_use_openshift_token: true (auto-detects OpenShift token)
+        3. litellm_vkey_openshift_token: OpenShift bearer token
+        4. litellm_vkey_username AND litellm_vkey_password: Username and password
     quiet: true
 
 - name: Validate models list for key creation

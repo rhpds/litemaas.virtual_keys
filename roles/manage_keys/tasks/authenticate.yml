@@ -16,7 +16,90 @@
     _litellm_auth_method: "master_key"
 
 # -----------------------------------------------------------------------------
-# Method 2: Username/Password Authentication (Login First)
+# Method 2: OpenShift Token Authentication
+# -----------------------------------------------------------------------------
+- name: Use OpenShift token authentication
+  when:
+    - _litellm_auth_method is not defined
+    - litellm_vkey_use_openshift_token | bool or (litellm_vkey_openshift_token is defined and litellm_vkey_openshift_token | length > 0)
+  block:
+    # Option A: User provided token manually
+    - name: Use manually provided OpenShift token
+      when: litellm_vkey_openshift_token is defined and litellm_vkey_openshift_token | length > 0
+      ansible.builtin.set_fact:
+        _litellm_openshift_token: "{{ litellm_vkey_openshift_token }}"
+        _litellm_auth_header: "Bearer {{ litellm_vkey_openshift_token }}"
+        _litellm_auth_method: "openshift_token_manual"
+
+    # Option B: Auto-detect from oc CLI
+    - name: Try to get OpenShift token from oc CLI
+      when: _litellm_auth_method is not defined
+      block:
+        - name: Check if oc command is available
+          ansible.builtin.command: which oc
+          register: _oc_check
+          failed_when: false
+          changed_when: false
+
+        - name: Get token from oc whoami -t
+          when: _oc_check.rc == 0
+          ansible.builtin.command: oc whoami -t
+          register: _oc_token
+          failed_when: false
+          changed_when: false
+          no_log: true
+
+        - name: Use token from oc CLI
+          when:
+            - _oc_check.rc == 0
+            - _oc_token.rc == 0
+            - _oc_token.stdout | length > 0
+          ansible.builtin.set_fact:
+            _litellm_openshift_token: "{{ _oc_token.stdout }}"
+            _litellm_auth_header: "Bearer {{ _oc_token.stdout }}"
+            _litellm_auth_method: "openshift_token_oc_cli"
+
+    # Option C: Auto-detect from service account (if running in pod)
+    - name: Try to get OpenShift token from service account
+      when: _litellm_auth_method is not defined
+      block:
+        - name: Check if service account token file exists
+          ansible.builtin.stat:
+            path: /var/run/secrets/kubernetes.io/serviceaccount/token
+          register: _sa_token_file
+
+        - name: Read service account token
+          when: _sa_token_file.stat.exists
+          ansible.builtin.slurp:
+            src: /var/run/secrets/kubernetes.io/serviceaccount/token
+          register: _sa_token_content
+          no_log: true
+
+        - name: Use service account token
+          when: _sa_token_file.stat.exists
+          ansible.builtin.set_fact:
+            _litellm_openshift_token: "{{ _sa_token_content.content | b64decode }}"
+            _litellm_auth_header: "Bearer {{ _sa_token_content.content | b64decode }}"
+            _litellm_auth_method: "openshift_token_serviceaccount"
+
+    # Validate we got a token
+    - name: Ensure OpenShift token was obtained
+      ansible.builtin.assert:
+        that:
+          - _litellm_auth_method is defined
+          - _litellm_openshift_token is defined
+          - _litellm_openshift_token | length > 0
+        fail_msg: |
+          Failed to obtain OpenShift token. Tried:
+          1. Manual token (litellm_vkey_openshift_token) - not provided
+          2. oc CLI (oc whoami -t) - {{ 'not available' if _oc_check.rc != 0 else 'failed' }}
+          3. Service account token file - {{ 'not found' if not _sa_token_file.stat.exists else 'empty' }}
+
+          Please provide token manually or ensure you're logged into OpenShift.
+        quiet: true
+
+# -----------------------------------------------------------------------------
+# Method 3: Username/Password Authentication (Login First)
 # -----------------------------------------------------------------------------
 - name: Use username/password authentication
   when:

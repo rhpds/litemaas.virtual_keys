@@ -75,7 +75,7 @@
         url: "{{ _litellm_api_endpoint }}/key/generate"
         method: POST
         headers:
-          Authorization: "Bearer {{ litellm_vkey_master_key }}"
+          Authorization: "{{ _litellm_auth_header }}"
           Content-Type: "application/json"
         body_format: json
         body: "{{ _litellm_request_body }}"

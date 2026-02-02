@@ -13,7 +13,13 @@
   ansible.builtin.include_tasks: validate.yml
 
 # -----------------------------------------------------------------------------
-# Step 2: Route to Create or Delete Based on State
+# Step 2: Authenticate to LiteLLM API
+# -----------------------------------------------------------------------------
+- name: Authenticate to LiteLLM API
+  ansible.builtin.include_tasks: authenticate.yml
+
+# -----------------------------------------------------------------------------
+# Step 3: Route to Create or Delete Based on State
 # -----------------------------------------------------------------------------
 - name: Create virtual key(s)
   when: litellm_vkey_state == "present"

@@ -1,0 +1,61 @@
+---
+# =============================================================================
+# LiteMaaS Virtual Keys - Authentication Handler
+# =============================================================================
+# Handles both master key and username/password authentication
+# Sets _litellm_auth_header for use in API calls
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Method 1: Master Key Authentication (Direct)
+# -----------------------------------------------------------------------------
+- name: Use master key authentication
+  when: litellm_vkey_master_key is defined and litellm_vkey_master_key | length > 0
+  ansible.builtin.set_fact:
+    _litellm_auth_header: "Bearer {{ litellm_vkey_master_key }}"
+    _litellm_auth_method: "master_key"
+
+# -----------------------------------------------------------------------------
+# Method 2: Username/Password Authentication (Login First)
+# -----------------------------------------------------------------------------
+- name: Use username/password authentication
+  when:
+    - _litellm_auth_method is not defined
+    - litellm_vkey_username is defined and litellm_vkey_username | length > 0
+    - litellm_vkey_password is defined and litellm_vkey_password | length > 0
+  block:
+    - name: Authenticate with username/password
+      ansible.builtin.uri:
+        url: "{{ litellm_vkey_api_url | regex_replace('/$', '') }}/login"
+        method: POST
+        headers:
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          username: "{{ litellm_vkey_username }}"
+          password: "{{ litellm_vkey_password }}"
+        validate_certs: "{{ litellm_vkey_verify_ssl }}"
+        timeout: "{{ litellm_vkey_api_timeout }}"
+        status_code: [200, 201]
+      register: _litellm_login_response
+      no_log: true
+
+    - name: Extract authentication token
+      ansible.builtin.set_fact:
+        litellm_vkey_auth_token: "{{ _litellm_login_response.json.token | default(_litellm_login_response.json.access_token) }}"
+        _litellm_auth_header: "Bearer {{ _litellm_login_response.json.token | default(_litellm_login_response.json.access_token) }}"
+        _litellm_auth_method: "username_password"
+
+    - name: Validate token was received
+      ansible.builtin.assert:
+        that:
+          - litellm_vkey_auth_token is defined
+          - litellm_vkey_auth_token | length > 0
+        fail_msg: |
+          Authentication failed. Login succeeded but no token received.
+          Check LiteLLM API response format.
+        quiet: true
+
+- name: Display authentication method
+  ansible.builtin.debug:
+    msg: "Using {{ _litellm_auth_method }} authentication"

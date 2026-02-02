@@ -1,7 +1,15 @@
 ---
 # API Connection (REQUIRED - must be provided by user)
 litellm_vkey_api_url: ""           # REQUIRED: LiteLLM API URL
-litellm_vkey_master_key: ""        # REQUIRED: LiteLLM master key
+
+# Authentication (choose ONE method)
+# Method 1: Master Key (preferred for automation)
+litellm_vkey_master_key: ""        # LiteLLM master key (sk-xxxxx)
+
+# Method 2: Username/Password (alternative)
+litellm_vkey_username: ""          # LiteLLM username
+litellm_vkey_password: ""          # LiteLLM password
+litellm_vkey_auth_token: ""        # Pre-authenticated token (set by role)
 
 # Key Configuration
 litellm_vkey_state: "present"      # present or absent

@@ -17,7 +17,7 @@
     url: "{{ _litellm_api_endpoint }}/key/list"
     method: GET
     headers:
-      Authorization: "Bearer {{ litellm_vkey_master_key }}"
+      Authorization: "{{ _litellm_auth_header }}"
       Content-Type: "application/json"
     validate_certs: "{{ litellm_vkey_verify_ssl }}"
     timeout: "{{ litellm_vkey_api_timeout }}"
@@ -50,7 +50,7 @@
         url: "{{ _litellm_api_endpoint }}/key/info?key={{ item }}"
         method: GET
         headers:
-          Authorization: "Bearer {{ litellm_vkey_master_key }}"
+          Authorization: "{{ _litellm_auth_header }}"
           Content-Type: "application/json"
         validate_certs: "{{ litellm_vkey_verify_ssl }}"
         timeout: "{{ litellm_vkey_api_timeout }}"
@@ -81,7 +81,7 @@
         url: "{{ _litellm_api_endpoint }}/key/delete"
         method: POST
         headers:
-          Authorization: "Bearer {{ litellm_vkey_master_key }}"
+          Authorization: "{{ _litellm_auth_header }}"
           Content-Type: "application/json"
         body_format: json
         body:

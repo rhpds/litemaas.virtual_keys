@@ -93,9 +93,25 @@ ansible-galaxy collection install litemaas.virtual_keys
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `litellm_vkey_api_url` | LiteLLM API URL | `https://litellm.example.com` |
-| `litellm_vkey_master_key` | LiteLLM master API key | `sk-xxxxx` |
 | `litellm_vkey_alias` | Unique key identifier/alias | `my-project` |
 | `litellm_vkey_models` | List of models to enable | `["openai/gpt-4"]` |
+
+### Authentication (Choose ONE Method)
+
+**Method 1: Master Key (Recommended for automation)**
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `litellm_vkey_master_key` | LiteLLM master API key | `sk-xxxxx` |
+
+**Method 2: Username/Password (Interactive use)**
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `litellm_vkey_username` | LiteLLM username | `admin` |
+| `litellm_vkey_password` | LiteLLM password | `password123` |
+
+Note: Username/password authentication requires the LiteLLM `/login` endpoint to be available.
 
 ### Optional Variables
 

@@ -10,17 +10,26 @@
     that:
       - litellm_vkey_api_url is defined
       - litellm_vkey_api_url | length > 0
-      - litellm_vkey_master_key is defined
-      - litellm_vkey_master_key | length > 0
       - litellm_vkey_alias is defined
       - litellm_vkey_alias | length > 0
       - litellm_vkey_state in ['present', 'absent']
     fail_msg: |
       Required variables missing. You must provide:
         - litellm_vkey_api_url: LiteLLM API URL
-        - litellm_vkey_master_key: LiteLLM master key
         - litellm_vkey_alias: Unique key identifier
         - litellm_vkey_state: 'present' or 'absent'
+    quiet: true
+
+- name: Validate authentication method provided
+  ansible.builtin.assert:
+    that: >
+      (litellm_vkey_master_key is defined and litellm_vkey_master_key | length > 0) or
+      (litellm_vkey_username is defined and litellm_vkey_username | length > 0 and
+       litellm_vkey_password is defined and litellm_vkey_password | length > 0)
+    fail_msg: |
+      Authentication required. Provide ONE of:
+        1. litellm_vkey_master_key: Master API key (sk-xxxxx)
+        2. litellm_vkey_username AND litellm_vkey_password: Username and password
     quiet: true
 
 - name: Validate models list for key creation

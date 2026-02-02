@@ -1,0 +1,22 @@
+namespace: litemaas
+name: virtual_keys
+version: 1.0.0
+readme: README.md
+authors:
+  - Prakhar Srivastava <psrivast@redhat.com>
+description: |
+  Generic Ansible collection for managing LiteLLM virtual API keys.
+  Create, delete, and manage virtual keys via LiteLLM API.
+  Supports single-user and multi-user key provisioning.
+license:
+  - MIT
+tags:
+  - litellm
+  - ai
+  - api_keys
+  - llm
+  - virtual_keys
+repository: https://github.com/rhpds/litemaas.virtual_keys
+documentation: https://github.com/rhpds/litemaas.virtual_keys/blob/main/README.md
+issues: https://github.com/rhpds/litemaas.virtual_keys/issues
+dependencies: {}

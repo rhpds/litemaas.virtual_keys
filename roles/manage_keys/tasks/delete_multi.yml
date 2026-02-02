@@ -1,0 +1,75 @@
+---
+# =============================================================================
+# LiteMaaS Virtual Keys - Delete Multi-User Keys
+# =============================================================================
+# Deletes all virtual keys for all users
+# Key naming: {alias}-user1, {alias}-user2, etc.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Step 1: Display Multi-User Deletion Details
+# -----------------------------------------------------------------------------
+- name: Display multi-user removal details
+  ansible.builtin.debug:
+    msg:
+      - "========================================="
+      - "Deleting Multi-User Virtual Keys"
+      - "========================================="
+      - "Number of users: {{ litellm_vkey_user_count }}"
+      - "User prefix: {{ litellm_vkey_user_prefix }}"
+      - "Key pattern: {{ litellm_vkey_alias }}-{{ litellm_vkey_user_prefix }}N"
+      - "========================================="
+
+# -----------------------------------------------------------------------------
+# Step 2: Set API Endpoint
+# -----------------------------------------------------------------------------
+- name: Set API endpoint
+  ansible.builtin.set_fact:
+    _litellm_api_endpoint: "{{ litellm_vkey_api_url | regex_replace('/$', '') }}"
+
+# Initialize counters
+- name: Initialize deletion counters
+  ansible.builtin.set_fact:
+    _litellm_deleted_count: 0
+    _litellm_missing_count: 0
+
+# -----------------------------------------------------------------------------
+# Step 3: Delete Keys for Each User
+# -----------------------------------------------------------------------------
+- name: Delete virtual key for each user
+  include_tasks:
+    file: ./delete_user_key.yml
+  loop: "{{ range(1, litellm_vkey_user_count | int + 1) | list }}"
+  loop_control:
+    loop_var: user_number
+    label: "{{ litellm_vkey_user_prefix }}{{ user_number }}"
+
+# -----------------------------------------------------------------------------
+# Step 4: Store Results in Fact
+# -----------------------------------------------------------------------------
+- name: Store multi-user deletion results in litellm_vkey_result
+  ansible.builtin.set_fact:
+    litellm_vkey_result:
+      api_endpoint: "{{ _litellm_api_endpoint }}"
+      api_base_url: "{{ _litellm_api_endpoint }}/v1"
+      models: "{{ litellm_vkey_models }}"
+      duration: "{{ litellm_vkey_duration }}"
+      user_count: "{{ litellm_vkey_user_count }}"
+      state: "absent"
+      deleted_count: "{{ _litellm_deleted_count }}"
+      missing_count: "{{ _litellm_missing_count }}"
+      changed: "{{ _litellm_deleted_count | int > 0 }}"
+
+# -----------------------------------------------------------------------------
+# Step 5: Display Summary
+# -----------------------------------------------------------------------------
+- name: Display deletion summary
+  ansible.builtin.debug:
+    msg:
+      - "========================================="
+      - "Multi-User Deletion Complete"
+      - "========================================="
+      - "Keys deleted: {{ _litellm_deleted_count }}"
+      - "Keys already missing: {{ _litellm_missing_count }}"
+      - "Total users: {{ litellm_vkey_user_count }}"
+      - "========================================="

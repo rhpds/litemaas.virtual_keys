@@ -1,0 +1,158 @@
+---
+# =============================================================================
+# LiteMaaS Virtual Keys - Create Single User Key
+# =============================================================================
+# Creates a virtual key for a single user
+# Stores results in litellm_vkey_result fact
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Step 1: Set API Endpoint
+# -----------------------------------------------------------------------------
+- name: Set API endpoint (remove trailing slash)
+  ansible.builtin.set_fact:
+    _litellm_api_endpoint: "{{ litellm_vkey_api_url | regex_replace('/$', '') }}"
+
+# -----------------------------------------------------------------------------
+# Step 2: Build Metadata
+# -----------------------------------------------------------------------------
+- name: Build metadata
+  ansible.builtin.set_fact:
+    _litellm_metadata:
+      alias: "{{ litellm_vkey_alias }}"
+      models: "{{ litellm_vkey_models | join(',') }}"
+      duration: "{{ litellm_vkey_duration }}"
+      models_count: "{{ litellm_vkey_models | length }}"
+
+# Merge custom metadata if provided
+- name: Merge custom metadata
+  when: litellm_vkey_metadata | length > 0
+  ansible.builtin.set_fact:
+    _litellm_metadata: "{{ _litellm_metadata | combine(litellm_vkey_metadata) }}"
+
+# -----------------------------------------------------------------------------
+# Step 3: Display Key Creation Details
+# -----------------------------------------------------------------------------
+- name: Display key creation details
+  ansible.builtin.debug:
+    msg:
+      - "========================================="
+      - "Creating LiteLLM Virtual Key"
+      - "========================================="
+      - "Key Alias: {{ litellm_vkey_alias }}"
+      - "Models: {{ litellm_vkey_models | join(', ') }}"
+      - "Duration: {{ litellm_vkey_duration }}"
+      - "User ID: {{ litellm_vkey_user_id }}"
+      - "========================================="
+
+# -----------------------------------------------------------------------------
+# Step 4: Create Virtual Key via LiteLLM API
+# -----------------------------------------------------------------------------
+- name: Create virtual key via LiteLLM API
+  block:
+    - name: Build API request body
+      ansible.builtin.set_fact:
+        _litellm_request_body:
+          models: "{{ litellm_vkey_models }}"
+          duration: "{{ litellm_vkey_duration }}"
+          user_id: "{{ litellm_vkey_user_id }}"
+          key_alias: "{{ litellm_vkey_alias }}"
+          metadata: "{{ _litellm_metadata }}"
+
+    - name: Add max_budget if specified
+      when: litellm_vkey_max_budget is not none
+      ansible.builtin.set_fact:
+        _litellm_request_body: "{{ _litellm_request_body | combine({'max_budget': litellm_vkey_max_budget}) }}"
+
+    - name: Debug API request
+      ansible.builtin.debug:
+        msg:
+          - "API URL: {{ _litellm_api_endpoint }}/key/generate"
+          - "Request Body: {{ _litellm_request_body | to_nice_json }}"
+
+    - name: Call LiteLLM key generation API
+      ansible.builtin.uri:
+        url: "{{ _litellm_api_endpoint }}/key/generate"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ litellm_vkey_master_key }}"
+          Content-Type: "application/json"
+        body_format: json
+        body: "{{ _litellm_request_body }}"
+        validate_certs: "{{ litellm_vkey_verify_ssl }}"
+        timeout: "{{ litellm_vkey_api_timeout }}"
+        status_code: [200, 201, 400]
+      register: _litellm_api_response
+      failed_when: false
+
+    - name: Set key created flag
+      ansible.builtin.set_fact:
+        _litellm_key_created: "{{ _litellm_api_response.status in [200, 201] }}"
+        _litellm_key_already_exists: "{{ _litellm_api_response.status == 400 }}"
+
+    # -----------------------------------------------------------------------------
+    # Step 5: Extract Key from Response
+    # -----------------------------------------------------------------------------
+    - name: Extract key details from response
+      ansible.builtin.set_fact:
+        _litellm_virtual_key: "{{ _litellm_api_response.get('key', _litellm_api_response.get('json', {}).get('key', 'KEY_NOT_FOUND')) if _litellm_key_created else 'KEY_ALREADY_EXISTS_CANNOT_RETRIEVE' }}"
+        _litellm_key_id: "{{ _litellm_api_response.get('key_id', _litellm_api_response.get('json', {}).get('key_id', _litellm_api_response.get('json', {}).get('token', ''))) }}"
+
+    - name: Fail if key already exists
+      when: _litellm_key_already_exists
+      ansible.builtin.fail:
+        msg: |
+          Key with alias '{{ litellm_vkey_alias }}' already exists but cannot be retrieved.
+          LiteLLM API does not return existing key values for security reasons.
+
+          Options:
+          1. Delete the existing key first using litellm_vkey_state=absent
+          2. Use a different alias to create a new key
+
+    - name: Ensure key value exists
+      when: _litellm_key_created
+      ansible.builtin.assert:
+        that:
+          - _litellm_virtual_key is defined
+          - _litellm_virtual_key | length > 0
+          - _litellm_virtual_key is match('^sk-')
+        fail_msg: |
+          Key was created but no valid key value was returned.
+          Got: {{ _litellm_virtual_key | default('undefined') }}
+          Expected: sk-xxxxx format
+          Response: {{ _litellm_api_response | to_nice_json }}
+        quiet: true
+
+    # -----------------------------------------------------------------------------
+    # Step 6: Display Success Message
+    # -----------------------------------------------------------------------------
+    - name: Display virtual key creation success
+      when: _litellm_key_created
+      ansible.builtin.debug:
+        msg:
+          - "========================================="
+          - "Virtual Key Created Successfully!"
+          - "========================================="
+          - "Key Alias: {{ litellm_vkey_alias }}"
+          - "Virtual Key: {{ _litellm_virtual_key }}"
+          - "API Endpoint: {{ _litellm_api_endpoint }}"
+          - "Models: {{ litellm_vkey_models | join(', ') }}"
+          - "Duration: {{ litellm_vkey_duration }}"
+          - "========================================="
+
+# -----------------------------------------------------------------------------
+# Step 7: Store Results in Fact
+# -----------------------------------------------------------------------------
+- name: Store results in litellm_vkey_result
+  ansible.builtin.set_fact:
+    litellm_vkey_result:
+      key: "{{ _litellm_virtual_key }}"
+      alias: "{{ litellm_vkey_alias }}"
+      key_id: "{{ _litellm_key_id }}"
+      api_endpoint: "{{ _litellm_api_endpoint }}"
+      api_base_url: "{{ _litellm_api_endpoint }}/v1"
+      models: "{{ litellm_vkey_models }}"
+      duration: "{{ litellm_vkey_duration }}"
+      user_id: "{{ litellm_vkey_user_id }}"
+      state: "present"
+      changed: "{{ _litellm_key_created }}"

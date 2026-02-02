@@ -1,0 +1,78 @@
+---
+# =============================================================================
+# LiteMaaS Virtual Keys - Create Multi-User Keys
+# =============================================================================
+# Creates one virtual key per user
+# Key naming: {alias}-user1, {alias}-user2, etc.
+# All users get same models and duration
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Step 1: Display Multi-User Configuration
+# -----------------------------------------------------------------------------
+- name: Display multi-user configuration
+  ansible.builtin.debug:
+    msg:
+      - "========================================="
+      - "Multi-User Mode Enabled"
+      - "========================================="
+      - "Number of users: {{ litellm_vkey_user_count }}"
+      - "User prefix: {{ litellm_vkey_user_prefix }}"
+      - "Key pattern: {{ litellm_vkey_alias }}-{{ litellm_vkey_user_prefix }}N"
+      - "Email domain: {{ litellm_vkey_user_domain }}"
+      - "Models: {{ litellm_vkey_models | join(', ') }}"
+      - "Duration: {{ litellm_vkey_duration }}"
+      - "========================================="
+
+# -----------------------------------------------------------------------------
+# Step 2: Set Common Variables
+# -----------------------------------------------------------------------------
+- name: Set API endpoint
+  ansible.builtin.set_fact:
+    _litellm_api_endpoint: "{{ litellm_vkey_api_url | regex_replace('/$', '') }}"
+
+# Initialize arrays for storing results
+- name: Initialize result arrays
+  ansible.builtin.set_fact:
+    _litellm_user_keys: []
+
+# -----------------------------------------------------------------------------
+# Step 3: Create Virtual Keys for Each User
+# -----------------------------------------------------------------------------
+- name: Create virtual key for each user
+  include_tasks:
+    file: ./create_user_key.yml
+  loop: "{{ range(1, litellm_vkey_user_count | int + 1) | list }}"
+  loop_control:
+    loop_var: user_number
+    label: "{{ litellm_vkey_user_prefix }}{{ user_number }}"
+
+# -----------------------------------------------------------------------------
+# Step 4: Store Results in Fact
+# -----------------------------------------------------------------------------
+- name: Store multi-user results in litellm_vkey_result
+  ansible.builtin.set_fact:
+    litellm_vkey_result:
+      api_endpoint: "{{ _litellm_api_endpoint }}"
+      api_base_url: "{{ _litellm_api_endpoint }}/v1"
+      models: "{{ litellm_vkey_models }}"
+      duration: "{{ litellm_vkey_duration }}"
+      user_count: "{{ litellm_vkey_user_count }}"
+      state: "present"
+      changed: true
+      keys: "{{ _litellm_user_keys }}"
+
+# -----------------------------------------------------------------------------
+# Step 5: Display Summary
+# -----------------------------------------------------------------------------
+- name: Display multi-user creation summary
+  ansible.builtin.debug:
+    msg:
+      - "========================================="
+      - "Multi-User Keys Created Successfully!"
+      - "========================================="
+      - "Created {{ _litellm_user_keys | length }} keys"
+      - "API Endpoint: {{ _litellm_api_endpoint }}/v1"
+      - "Available Models: {{ litellm_vkey_models | join(', ') }}"
+      - "Key Duration: {{ litellm_vkey_duration }}"
+      - "========================================="

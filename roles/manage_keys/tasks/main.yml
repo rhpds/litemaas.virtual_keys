@@ -1,0 +1,24 @@
+---
+# =============================================================================
+# LiteMaaS Virtual Keys - Main Entry Point
+# =============================================================================
+# Generic role for managing LiteLLM virtual keys
+# Supports both single-user and multi-user key provisioning
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Step 1: Validate Required Inputs
+# -----------------------------------------------------------------------------
+- name: Validate configuration
+  ansible.builtin.include_tasks: validate.yml
+
+# -----------------------------------------------------------------------------
+# Step 2: Route to Create or Delete Based on State
+# -----------------------------------------------------------------------------
+- name: Create virtual key(s)
+  when: litellm_vkey_state == "present"
+  ansible.builtin.include_tasks: "{{ 'create_multi.yml' if (litellm_vkey_multi_user | bool) else 'create_single.yml' }}"
+
+- name: Delete virtual key(s)
+  when: litellm_vkey_state == "absent"
+  ansible.builtin.include_tasks: "{{ 'delete_multi.yml' if (litellm_vkey_multi_user | bool) else 'delete_single.yml' }}"

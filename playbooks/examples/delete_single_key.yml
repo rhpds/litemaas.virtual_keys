@@ -1,0 +1,23 @@
+---
+- name: Delete LiteLLM Virtual Key (Single User Example)
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Delete virtual key
+      ansible.builtin.include_role:
+        name: litemaas.virtual_keys.manage_keys
+      vars:
+        litellm_vkey_state: absent
+        litellm_vkey_api_url: "https://litellm.example.com"
+        litellm_vkey_master_key: "{{ lookup('env', 'LITELLM_MASTER_KEY') }}"
+        litellm_vkey_alias: "my-dev-project"
+        litellm_vkey_models:
+          - "openai/granite-3-2-8b-instruct"
+        litellm_vkey_duration: "7d"
+
+    - name: Display deletion result
+      ansible.builtin.debug:
+        msg: |
+          Key deletion: {{ 'Deleted' if litellm_vkey_result.deleted else 'Was already missing (idempotent)' }}
+          Alias: {{ litellm_vkey_result.alias }}

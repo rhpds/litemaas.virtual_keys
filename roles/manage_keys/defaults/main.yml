@@ -1,0 +1,34 @@
+---
+# API Connection (REQUIRED - must be provided by user)
+litellm_vkey_api_url: ""           # REQUIRED: LiteLLM API URL
+litellm_vkey_master_key: ""        # REQUIRED: LiteLLM master key
+
+# Key Configuration
+litellm_vkey_state: "present"      # present or absent
+litellm_vkey_alias: ""             # REQUIRED: Key alias (unique identifier)
+litellm_vkey_models: []            # List of models to enable
+litellm_vkey_duration: "30d"       # Key validity (3d, 7d, 30d, 90d)
+litellm_vkey_user_id: "{{ litellm_vkey_alias }}"  # User identifier (email/username)
+litellm_vkey_max_budget: null      # null = unlimited
+
+# Metadata (optional)
+litellm_vkey_metadata: {}          # Custom metadata dictionary
+
+# API Settings
+litellm_vkey_api_timeout: 30
+litellm_vkey_verify_ssl: true
+litellm_vkey_retry_count: 3
+litellm_vkey_retry_delay: 5
+
+# Multi-user Settings
+litellm_vkey_multi_user: false     # Enable multi-user mode
+litellm_vkey_user_count: 1         # Number of users (if multi_user=true)
+litellm_vkey_user_prefix: "user"   # Username prefix (user1, user2, ...)
+litellm_vkey_user_domain: "example.com"  # Email domain
+
+# Deletion Settings
+litellm_vkey_delete_method: "by_alias"  # by_alias or by_key_id
+litellm_vkey_force_db_delete: false     # Direct DB deletion workaround
+litellm_vkey_postgres_pod: "postgres-0"
+litellm_vkey_postgres_db: "litellm"
+litellm_vkey_namespace: "litellm"

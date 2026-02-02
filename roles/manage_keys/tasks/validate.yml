@@ -1,0 +1,44 @@
+---
+# =============================================================================
+# LiteMaaS Virtual Keys - Input Validation
+# =============================================================================
+# Validates required variables before key operations
+# =============================================================================
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - litellm_vkey_api_url is defined
+      - litellm_vkey_api_url | length > 0
+      - litellm_vkey_master_key is defined
+      - litellm_vkey_master_key | length > 0
+      - litellm_vkey_alias is defined
+      - litellm_vkey_alias | length > 0
+      - litellm_vkey_state in ['present', 'absent']
+    fail_msg: |
+      Required variables missing. You must provide:
+        - litellm_vkey_api_url: LiteLLM API URL
+        - litellm_vkey_master_key: LiteLLM master key
+        - litellm_vkey_alias: Unique key identifier
+        - litellm_vkey_state: 'present' or 'absent'
+    quiet: true
+
+- name: Validate models list for key creation
+  when: litellm_vkey_state == "present"
+  ansible.builtin.assert:
+    that:
+      - litellm_vkey_models is defined
+      - litellm_vkey_models | length > 0
+    fail_msg: "At least one model must be specified in litellm_vkey_models when creating keys"
+    quiet: true
+
+- name: Validate multi-user configuration
+  when: litellm_vkey_multi_user | bool
+  ansible.builtin.assert:
+    that:
+      - litellm_vkey_user_count is defined
+      - litellm_vkey_user_count | int > 0
+    fail_msg: |
+      Multi-user mode requires:
+        - litellm_vkey_user_count: Number of users (> 0)
+    quiet: true

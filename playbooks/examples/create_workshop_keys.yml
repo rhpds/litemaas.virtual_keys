@@ -1,0 +1,47 @@
+---
+- name: Create Keys for Workshop Participants (Multi-User Example)
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    workshop_name: "ai-workshop-2024"
+    participant_count: 25
+
+  tasks:
+    - name: Create keys for all participants
+      ansible.builtin.include_role:
+        name: litemaas.virtual_keys.manage_keys
+      vars:
+        litellm_vkey_state: present
+        litellm_vkey_api_url: "https://litellm.example.com"
+        litellm_vkey_master_key: "{{ lookup('env', 'LITELLM_MASTER_KEY') }}"
+        litellm_vkey_alias: "{{ workshop_name }}"
+        litellm_vkey_multi_user: true
+        litellm_vkey_user_count: "{{ participant_count }}"
+        litellm_vkey_user_prefix: "participant"
+        litellm_vkey_user_domain: "workshop.example.com"
+        litellm_vkey_models:
+          - "openai/granite-3-2-8b-instruct"
+        litellm_vkey_duration: "3d"
+
+    - name: Display summary
+      ansible.builtin.debug:
+        msg: |
+          Created {{ litellm_vkey_result.keys | length }} keys
+          Example: Participant 1's key is {{ litellm_vkey_result.keys[0].key }}
+
+    - name: Save keys to file (optional)
+      ansible.builtin.copy:
+        content: |
+          # Workshop Keys - {{ workshop_name }}
+          # API Endpoint: {{ litellm_vkey_result.api_base_url }}
+
+          {% for key_info in litellm_vkey_result.keys %}
+          User: {{ key_info.user }}
+          Email: {{ key_info.user_id }}
+          Key: {{ key_info.key }}
+          Alias: {{ key_info.alias }}
+
+          {% endfor %}
+        dest: "./workshop_keys_{{ workshop_name }}.txt"
+      delegate_to: localhost

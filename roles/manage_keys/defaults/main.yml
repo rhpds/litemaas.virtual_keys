@@ -2,18 +2,8 @@
 # API Connection (REQUIRED - must be provided by user)
 litellm_vkey_api_url: ""           # REQUIRED: LiteLLM API URL
 
-# Authentication (choose ONE method)
-# Method 1: Master Key (preferred for automation)
-litellm_vkey_master_key: ""        # LiteLLM master key (sk-xxxxx)
-
-# Method 2: OpenShift Token (for SSO-enabled LiteLLM)
-litellm_vkey_use_openshift_token: false  # Auto-detect and use OpenShift token
-litellm_vkey_openshift_token: ""         # Manual OpenShift token (overrides auto-detect)
-
-# Method 3: Username/Password (alternative)
-litellm_vkey_username: ""          # LiteLLM username
-litellm_vkey_password: ""          # LiteLLM password
-litellm_vkey_auth_token: ""        # Pre-authenticated token (set by role)
+# Authentication (REQUIRED)
+litellm_vkey_master_key: ""        # REQUIRED: LiteLLM master key (sk-xxxxx)
 
 # Key Configuration
 litellm_vkey_state: "present"      # present or absent

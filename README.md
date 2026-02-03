@@ -1,14 +1,14 @@
-# LiteMaaS Virtual Keys Collection
+# LiteLLM Virtual Keys Collection
 
-Generic Ansible collection for managing LiteLLM virtual API keys. Create, delete, and manage virtual keys for single users or multi-user workshops via the LiteLLM API.
+Generic Ansible collection for managing LiteLLM virtual API keys. Create and delete virtual keys for single users or multi-user workshops via the LiteLLM API.
 
 ## Features
 
 - **Single-user key provisioning**: Create individual API keys for personal use
 - **Multi-user orchestration**: Provision keys for workshops with 100+ participants
+- **Quota management**: Set budget limits and expiration times
 - **Idempotent operations**: Safe to run multiple times
 - **State-based management**: Use `state: present` or `state: absent`
-- **Flexible configuration**: Customize models, duration, budgets, and metadata
 
 ## Installation
 
@@ -18,36 +18,7 @@ ansible-galaxy collection install litemaas.virtual_keys
 
 ## Quick Start
 
-### Create a Single Key (OpenShift SSO)
-
-If your LiteLLM uses "Login with OpenShift" SSO:
-
-```yaml
----
-- name: Create LiteLLM Virtual Key
-  hosts: localhost
-  gather_facts: false
-
-  tasks:
-    - name: Create virtual key
-      ansible.builtin.include_role:
-        name: litemaas.virtual_keys.manage_keys
-      vars:
-        litellm_vkey_state: present
-        litellm_vkey_api_url: "https://litellm.apps.cluster.com"
-        litellm_vkey_use_openshift_token: true  # Auto-detect OpenShift token
-        litellm_vkey_alias: "my-dev-project"
-        litellm_vkey_user_id: "developer@example.com"
-        litellm_vkey_models:
-          - "openai/granite-3-2-8b-instruct"
-        litellm_vkey_duration: "7d"
-```
-
-Prerequisites: `oc login https://api.cluster.com:6443` first
-
-### Create a Single Key (Master Key)
-
-If you have a master key:
+### Create a Single Key
 
 ```yaml
 ---
@@ -66,8 +37,10 @@ If you have a master key:
         litellm_vkey_alias: "my-dev-project"
         litellm_vkey_user_id: "developer@example.com"
         litellm_vkey_models:
-          - "openai/granite-3-2-8b-instruct"
+          - "gpt-4"
+          - "gpt-3.5-turbo"
         litellm_vkey_duration: "7d"
+        litellm_vkey_max_budget: 100
 ```
 
 ### Create Workshop Keys (Multi-User)
@@ -92,8 +65,9 @@ If you have a master key:
         litellm_vkey_user_prefix: "participant"
         litellm_vkey_user_domain: "workshop.example.com"
         litellm_vkey_models:
-          - "openai/granite-3-2-8b-instruct"
+          - "gpt-4"
         litellm_vkey_duration: "3d"
+        litellm_vkey_max_budget: 50
 ```
 
 ### Delete a Key
@@ -122,44 +96,9 @@ If you have a master key:
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `litellm_vkey_api_url` | LiteLLM API URL | `https://litellm.example.com` |
-| `litellm_vkey_alias` | Unique key identifier/alias | `my-project` |
-| `litellm_vkey_models` | List of models to enable | `["openai/gpt-4"]` |
-
-### Authentication (Choose ONE Method)
-
-**Method 1: Master Key (If available)**
-
-| Variable | Description | Example |
-|----------|-------------|---------|
 | `litellm_vkey_master_key` | LiteLLM master API key | `sk-xxxxx` |
-
-Best for: Non-SSO deployments or when you have admin-provided master key.
-
-**Method 2: OpenShift Token (Recommended for SSO deployments)**
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `litellm_vkey_use_openshift_token` | Auto-detect OpenShift token | `true` |
-| `litellm_vkey_openshift_token` | Manual OpenShift token (optional) | `sha256~xxxxx` |
-
-Best for: LiteLLM deployed on OpenShift with "Login with OpenShift" SSO.
-
-**How it works:**
-1. If `litellm_vkey_openshift_token` is provided, uses that token
-2. Otherwise tries `oc whoami -t` (if you're logged in with `oc login`)
-3. Otherwise reads from `/var/run/secrets/kubernetes.io/serviceaccount/token` (if running in a pod)
-
-**Method 3: Username/Password (Legacy)**
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `litellm_vkey_username` | LiteLLM username | `admin` |
-| `litellm_vkey_password` | LiteLLM password | `password123` |
-
-**Important Notes:**
-- Username/password authentication requires the LiteLLM `/login` endpoint to be available
-- **Does not work with SSO** (OAuth/OIDC) - those require browser-based authentication flows
-- For OpenShift SSO deployments, use Method 2 (OpenShift Token)
+| `litellm_vkey_alias` | Unique key identifier/alias | `my-project` |
+| `litellm_vkey_models` | List of models to enable | `["gpt-4", "gpt-3.5-turbo"]` |
 
 ### Optional Variables
 
@@ -168,7 +107,7 @@ Best for: LiteLLM deployed on OpenShift with "Login with OpenShift" SSO.
 | `litellm_vkey_state` | `present` | Key state: `present` or `absent` |
 | `litellm_vkey_duration` | `30d` | Key validity period (3d, 7d, 30d, 90d) |
 | `litellm_vkey_user_id` | `{{ litellm_vkey_alias }}` | User identifier (email/username) |
-| `litellm_vkey_max_budget` | `null` | Budget limit (null = unlimited) |
+| `litellm_vkey_max_budget` | `null` | Budget limit in dollars (null = unlimited) |
 | `litellm_vkey_metadata` | `{}` | Custom metadata dictionary |
 | `litellm_vkey_multi_user` | `false` | Enable multi-user mode |
 | `litellm_vkey_user_count` | `1` | Number of users (multi-user mode) |
@@ -176,6 +115,28 @@ Best for: LiteLLM deployed on OpenShift with "Login with OpenShift" SSO.
 | `litellm_vkey_user_domain` | `example.com` | Email domain for users |
 
 See [`roles/manage_keys/defaults/main.yml`](roles/manage_keys/defaults/main.yml) for complete variable reference.
+
+## Getting the Master Key
+
+### From OpenShift/Kubernetes Secret
+
+```bash
+# Get the master key from your LiteLLM deployment
+kubectl get secret litellm-secret -n litellm -o jsonpath='{.data.LITELLM_MASTER_KEY}' | base64 -d
+
+# Or with oc (OpenShift)
+oc get secret litellm-secret -n litellm -o jsonpath='{.data.LITELLM_MASTER_KEY}' | base64 -d
+
+# Set as environment variable
+export LITELLM_MASTER_KEY="sk-xxxxx"
+```
+
+### Use in Playbook
+
+```yaml
+vars:
+  litellm_vkey_master_key: "{{ lookup('env', 'LITELLM_MASTER_KEY') }}"
+```
 
 ## Return Values
 
@@ -190,7 +151,7 @@ litellm_vkey_result:
   key_id: "token_hash"
   api_endpoint: "https://litellm.example.com"
   api_base_url: "https://litellm.example.com/v1"
-  models: ["openai/gpt-4"]
+  models: ["gpt-4"]
   duration: "7d"
   user_id: "developer@example.com"
   state: "present"
@@ -203,7 +164,7 @@ litellm_vkey_result:
 litellm_vkey_result:
   api_endpoint: "https://litellm.example.com"
   api_base_url: "https://litellm.example.com/v1"
-  models: ["openai/gpt-4"]
+  models: ["gpt-4"]
   duration: "3d"
   user_count: 3
   state: "present"
@@ -220,10 +181,28 @@ litellm_vkey_result:
 
 See [`playbooks/examples/`](playbooks/examples/) for complete example playbooks:
 
-- [`create_key_openshift_sso.yml`](playbooks/examples/create_key_openshift_sso.yml) - **OpenShift SSO authentication** (recommended for OpenShift deployments)
-- [`create_single_key.yml`](playbooks/examples/create_single_key.yml) - Single-user key creation (master key)
+- [`create_single_key.yml`](playbooks/examples/create_single_key.yml) - Single-user key creation
 - [`delete_single_key.yml`](playbooks/examples/delete_single_key.yml) - Delete a key
 - [`create_workshop_keys.yml`](playbooks/examples/create_workshop_keys.yml) - Multi-user workshop provisioning
+
+## Quota Management
+
+Control spending and access with quotas:
+
+```yaml
+vars:
+  litellm_vkey_max_budget: 100      # $100 spending limit
+  litellm_vkey_duration: "30d"      # Expires in 30 days
+  litellm_vkey_models:              # Only these models
+    - "gpt-4"
+    - "gpt-3.5-turbo"
+```
+
+**How it works:**
+- LiteLLM tracks token usage per key
+- Automatically blocks requests when budget exceeded
+- Key auto-expires after duration period
+- Users only have access to specified models
 
 ## License
 

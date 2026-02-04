@@ -20,6 +20,22 @@ ansible-galaxy collection install litemaas.virtual_keys
 
 ### Create a Single Key
 
+**Using example playbook:**
+```bash
+# Set your master key
+export LITELLM_MASTER_KEY="sk-xxxxx"
+
+# Create a key with command-line parameters
+ansible-playbook litemaas.virtual_keys.create_single_key \
+  -e litellm_vkey_api_url="https://litellm.example.com" \
+  -e litellm_vkey_alias="my-project-name" \
+  -e litellm_vkey_user_id="developer@example.com" \
+  -e litellm_vkey_models='["gpt-4"]' \
+  -e litellm_vkey_duration="7d" \
+  -e litellm_vkey_max_budget=100
+```
+
+**Or create your own playbook:**
 ```yaml
 ---
 - name: Create LiteLLM Virtual Key
@@ -184,6 +200,49 @@ See [`playbooks/examples/`](playbooks/examples/) for complete example playbooks:
 - [`create_single_key.yml`](playbooks/examples/create_single_key.yml) - Single-user key creation
 - [`delete_single_key.yml`](playbooks/examples/delete_single_key.yml) - Delete a key
 - [`create_workshop_keys.yml`](playbooks/examples/create_workshop_keys.yml) - Multi-user workshop provisioning
+
+## Common Use Cases
+
+### Create Multiple Keys with Different Names
+
+```bash
+# Development key
+ansible-playbook litemaas.virtual_keys.create_single_key \
+  -e litellm_vkey_api_url="https://litellm.example.com" \
+  -e litellm_vkey_alias="dev-environment" \
+  -e litellm_vkey_models='["gpt-3.5-turbo"]'
+
+# Production key
+ansible-playbook litemaas.virtual_keys.create_single_key \
+  -e litellm_vkey_api_url="https://litellm.example.com" \
+  -e litellm_vkey_alias="prod-environment" \
+  -e litellm_vkey_models='["gpt-4"]' \
+  -e litellm_vkey_max_budget=1000
+
+# Personal key
+ansible-playbook litemaas.virtual_keys.create_single_key \
+  -e litellm_vkey_api_url="https://litellm.example.com" \
+  -e litellm_vkey_alias="john-personal" \
+  -e litellm_vkey_user_id="john@example.com" \
+  -e litellm_vkey_models='["gpt-4"]'
+```
+
+### Replace an Existing Key
+
+If you get "key already exists" error:
+
+```bash
+# 1. Delete the old key
+ansible-playbook litemaas.virtual_keys.delete_single_key \
+  -e litellm_vkey_api_url="https://litellm.example.com" \
+  -e litellm_vkey_alias="my-project"
+
+# 2. Create new key with same name
+ansible-playbook litemaas.virtual_keys.create_single_key \
+  -e litellm_vkey_api_url="https://litellm.example.com" \
+  -e litellm_vkey_alias="my-project" \
+  -e litellm_vkey_models='["gpt-4"]'
+```
 
 ## Quota Management
 

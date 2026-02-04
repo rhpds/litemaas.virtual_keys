@@ -9,7 +9,7 @@ description: |
   Create, delete, and manage virtual keys via LiteLLM API.
   Supports single-user and multi-user key provisioning.
 license:
-  - MIT
+  - GPL-2.0-or-later
 tags:
   - litellm
   - ai

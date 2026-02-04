@@ -5,6 +5,13 @@
 # Validates that requested models exist in LiteLLM before creating key
 # =============================================================================
 
+- name: Debug models at validation time
+  ansible.builtin.debug:
+    msg:
+      - "Models type: {{ litellm_vkey_models | type_debug }}"
+      - "Models value: {{ litellm_vkey_models }}"
+      - "Is sequence: {{ litellm_vkey_models is sequence }}"
+
 - name: Get available models from LiteLLM
   ansible.builtin.uri:
     url: "{{ _litellm_api_endpoint }}/v1/models"
@@ -40,15 +47,18 @@
     - _litellm_invalid_models | length > 0
   ansible.builtin.fail:
     msg: |
-      Invalid models requested!
-
-      You requested: {{ litellm_vkey_models | join(', ') }}
-      Not available: {{ _litellm_invalid_models | join(', ') }}
+      ✗ Invalid model(s) requested
 
       Available models in this LiteLLM deployment:
       {{ _litellm_available_models | join(', ') }}
 
-      Please update litellm_vkey_models with valid model names.
+      Please use one of the models listed above.
+
+      Example:
+        ansible-playbook create_key.yml \
+          -e litellm_vkey_api_url="{{ litellm_vkey_api_url }}" \
+          -e litellm_vkey_alias="{{ litellm_vkey_alias }}" \
+          -e litellm_vkey_models='["{{ _litellm_available_models[0] }}"]'
 
 - name: Display validation success
   when:

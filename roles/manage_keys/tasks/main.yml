@@ -19,7 +19,19 @@
   ansible.builtin.include_tasks: authenticate.yml
 
 # -----------------------------------------------------------------------------
-# Step 3: Route to Create or Delete Based on State
+# Step 3: Validate Models (before creating keys)
+# -----------------------------------------------------------------------------
+- name: Set API endpoint
+  when: litellm_vkey_state == "present"
+  ansible.builtin.set_fact:
+    _litellm_api_endpoint: "{{ litellm_vkey_api_url | regex_replace('/$', '') }}"
+
+- name: Validate requested models exist
+  when: litellm_vkey_state == "present"
+  ansible.builtin.include_tasks: validate_models.yml
+
+# -----------------------------------------------------------------------------
+# Step 4: Route to Create or Delete Based on State
 # -----------------------------------------------------------------------------
 - name: Create virtual key(s)
   when: litellm_vkey_state == "present"

@@ -1,0 +1,58 @@
+---
+# =============================================================================
+# LiteMaaS Virtual Keys - Model Validation
+# =============================================================================
+# Validates that requested models exist in LiteLLM before creating key
+# =============================================================================
+
+- name: Get available models from LiteLLM
+  ansible.builtin.uri:
+    url: "{{ _litellm_api_endpoint }}/v1/models"
+    method: GET
+    headers:
+      Authorization: "{{ _litellm_auth_header }}"
+    validate_certs: "{{ litellm_vkey_verify_ssl }}"
+    timeout: "{{ litellm_vkey_api_timeout }}"
+    status_code: [200]
+  register: _litellm_models_response
+  failed_when: false
+
+- name: Extract available model names
+  when: _litellm_models_response.status == 200
+  ansible.builtin.set_fact:
+    _litellm_available_models: "{{ _litellm_models_response.json.data | map(attribute='id') | list }}"
+
+- name: Display available models
+  when: _litellm_models_response.status == 200
+  ansible.builtin.debug:
+    msg:
+      - "Available models in LiteLLM:"
+      - "{{ _litellm_available_models | join(', ') }}"
+
+- name: Check if requested models exist
+  when: _litellm_models_response.status == 200
+  ansible.builtin.set_fact:
+    _litellm_invalid_models: "{{ litellm_vkey_models | difference(_litellm_available_models) }}"
+
+- name: Fail if requested models don't exist
+  when:
+    - _litellm_models_response.status == 200
+    - _litellm_invalid_models | length > 0
+  ansible.builtin.fail:
+    msg: |
+      Invalid models requested!
+
+      You requested: {{ litellm_vkey_models | join(', ') }}
+      Not available: {{ _litellm_invalid_models | join(', ') }}
+
+      Available models in this LiteLLM deployment:
+      {{ _litellm_available_models | join(', ') }}
+
+      Please update litellm_vkey_models with valid model names.
+
+- name: Display validation success
+  when:
+    - _litellm_models_response.status == 200
+    - _litellm_invalid_models | length == 0
+  ansible.builtin.debug:
+    msg: "✓ All requested models are available"

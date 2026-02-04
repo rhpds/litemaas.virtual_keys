@@ -31,35 +31,26 @@
         fail_msg: "At least one model must be specified in litellm_vkey_models when creating keys"
         quiet: true
 
-    - name: Debug models type
-      ansible.builtin.debug:
-        msg:
-          - "Models type: {{ litellm_vkey_models | type_debug }}"
-          - "Models value: {{ litellm_vkey_models }}"
-
     - name: Parse models if string (handle command-line JSON)
       when: litellm_vkey_models is string
-      block:
-        - name: Try to parse JSON string to list
-          ansible.builtin.set_fact:
-            litellm_vkey_models_parsed: "{{ litellm_vkey_models | from_json }}"
-
-        - name: Replace with parsed list
-          ansible.builtin.set_fact:
-            litellm_vkey_models: "{{ litellm_vkey_models_parsed }}"
+      ansible.builtin.set_fact:
+        litellm_vkey_models: "{{ litellm_vkey_models | from_json }}"
 
     - name: Validate models is a list
       ansible.builtin.assert:
         that:
           - litellm_vkey_models is sequence
-          - litellm_vkey_models is not string
           - litellm_vkey_models is not mapping
+          - litellm_vkey_models | length > 0
         fail_msg: |
           litellm_vkey_models must be a list of model names.
 
           Examples:
             Command line: -e litellm_vkey_models='["gpt-4", "gpt-3.5-turbo"]'
             Playbook:     litellm_vkey_models: ["gpt-4"]
+
+          Current value: {{ litellm_vkey_models }}
+          Current type: {{ litellm_vkey_models | type_debug }}
         quiet: true
 
 - name: Validate multi-user configuration

@@ -31,15 +31,27 @@
         fail_msg: "At least one model must be specified in litellm_vkey_models when creating keys"
         quiet: true
 
-    - name: Ensure models is a list (handle command-line JSON string)
-      when: litellm_vkey_models is string
-      ansible.builtin.set_fact:
-        litellm_vkey_models: "{{ litellm_vkey_models | from_json }}"
+    - name: Debug models type
+      ansible.builtin.debug:
+        msg:
+          - "Models type: {{ litellm_vkey_models | type_debug }}"
+          - "Models value: {{ litellm_vkey_models }}"
 
-    - name: Validate models is a list after parsing
+    - name: Parse models if string (handle command-line JSON)
+      when: litellm_vkey_models is string
+      block:
+        - name: Try to parse JSON string to list
+          ansible.builtin.set_fact:
+            litellm_vkey_models_parsed: "{{ litellm_vkey_models | from_json }}"
+
+        - name: Replace with parsed list
+          ansible.builtin.set_fact:
+            litellm_vkey_models: "{{ litellm_vkey_models_parsed }}"
+
+    - name: Validate models is a list
       ansible.builtin.assert:
         that:
-          - litellm_vkey_models is iterable
+          - litellm_vkey_models is sequence
           - litellm_vkey_models is not string
           - litellm_vkey_models is not mapping
         fail_msg: |

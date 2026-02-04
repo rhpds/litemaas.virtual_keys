@@ -85,10 +85,37 @@
       register: _litellm_api_response
       failed_when: false
 
+    - name: Extract error details from response
+      when: _litellm_api_response.status == 400
+      ansible.builtin.set_fact:
+        _litellm_error_message: "{{ _litellm_api_response.json.detail | default(_litellm_api_response.json.error | default(_litellm_api_response.json.message | default('Unknown error'))) }}"
+
+    - name: Check if error is due to invalid model
+      when:
+        - _litellm_api_response.status == 400
+        - _litellm_error_message is defined
+        - "'model' in _litellm_error_message | lower"
+        - "'not' in _litellm_error_message | lower or 'invalid' in _litellm_error_message | lower"
+      ansible.builtin.fail:
+        msg: |
+          Failed to create virtual key: Invalid model configuration
+
+          Error from LiteLLM: {{ _litellm_error_message }}
+
+          Models you requested: {{ litellm_vkey_models | join(', ') }}
+
+          This usually means one or more models don't exist in your LiteLLM deployment.
+
+          To see available models:
+            curl {{ _litellm_api_endpoint }}/v1/models \
+              -H "Authorization: {{ _litellm_auth_header }}"
+
+          Or check the LiteLLM admin UI at: {{ _litellm_api_endpoint }}
+
     - name: Set key created flag
       ansible.builtin.set_fact:
         _litellm_key_created: "{{ _litellm_api_response.status in [200, 201] }}"
-        _litellm_key_already_exists: "{{ _litellm_api_response.status == 400 }}"
+        _litellm_key_already_exists: "{{ _litellm_api_response.status == 400 and 'already exists' in _litellm_error_message | lower }}"
 
     # -----------------------------------------------------------------------------
     # Step 5: Extract Key from Response
@@ -108,6 +135,19 @@
           Options:
           1. Delete the existing key first using litellm_vkey_state=absent
           2. Use a different alias to create a new key
+
+    - name: Fail on any other API error
+      when:
+        - _litellm_api_response.status == 400
+        - not _litellm_key_already_exists
+        - not _litellm_key_created
+      ansible.builtin.fail:
+        msg: |
+          Failed to create virtual key
+
+          Error from LiteLLM API: {{ _litellm_error_message }}
+
+          Full response: {{ _litellm_api_response.json | to_nice_json }}
 
     - name: Ensure key value exists
       when: _litellm_key_created

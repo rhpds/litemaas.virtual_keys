@@ -1,19 +1,25 @@
 # LiteLLM Virtual Keys Collection
 
-Generic Ansible collection for managing LiteLLM virtual API keys. Create and delete virtual keys for single users or multi-user workshops via the LiteLLM API.
+[![Ansible Galaxy](https://img.shields.io/badge/galaxy-prakhar1985.litellm__virtual__keys-blue.svg)](https://galaxy.ansible.com/ui/repo/published/prakhar1985/litellm_virtual_keys/)
+[![License](https://img.shields.io/badge/license-GPL--2.0--or--later-green.svg)](LICENSE)
+
+Ansible collection for managing LiteLLM virtual API keys with quota management and model validation. Create and delete virtual keys for single users or multi-user workshops via the LiteLLM API.
 
 ## Features
 
+- **Model validation**: Automatically validates models exist before creating keys
 - **Single-user key provisioning**: Create individual API keys for personal use
 - **Multi-user orchestration**: Provision keys for workshops with 100+ participants
-- **Quota management**: Set budget limits and expiration times
+- **Quota management**: Set budget limits and expiration times for spending control
 - **Idempotent operations**: Safe to run multiple times
 - **State-based management**: Use `state: present` or `state: absent`
+- **Master key authentication**: Simple, secure authentication
+- **Helpful error messages**: Clear guidance when things go wrong
 
 ## Installation
 
 ```bash
-ansible-galaxy collection install litemaas.virtual_keys
+ansible-galaxy collection install prakhar1985.litellm_virtual_keys
 ```
 
 ## Quick Start
@@ -30,7 +36,7 @@ ansible-galaxy collection install litemaas.virtual_keys
   tasks:
     - name: Create virtual key
       ansible.builtin.include_role:
-        name: litemaas.virtual_keys.manage_keys
+        name: prakhar1985.litellm_virtual_keys.manage_keys
       vars:
         litellm_vkey_state: present
         litellm_vkey_api_url: "https://litellm.example.com"
@@ -68,7 +74,7 @@ ansible-playbook create_key.yml \
   tasks:
     - name: Create keys for all participants
       ansible.builtin.include_role:
-        name: litemaas.virtual_keys.manage_keys
+        name: prakhar1985.litellm_virtual_keys.manage_keys
       vars:
         litellm_vkey_state: present
         litellm_vkey_api_url: "https://litellm.example.com"
@@ -95,7 +101,7 @@ ansible-playbook create_key.yml \
   tasks:
     - name: Delete virtual key
       ansible.builtin.include_role:
-        name: litemaas.virtual_keys.manage_keys
+        name: prakhar1985.litellm_virtual_keys.manage_keys
       vars:
         litellm_vkey_state: absent
         litellm_vkey_api_url: "https://litellm.example.com"
@@ -238,7 +244,7 @@ If you get "key already exists" error, create a delete playbook (delete_key.yml)
   tasks:
     - name: Delete virtual key
       ansible.builtin.include_role:
-        name: litemaas.virtual_keys.manage_keys
+        name: prakhar1985.litellm_virtual_keys.manage_keys
       vars:
         litellm_vkey_state: absent
         litellm_vkey_api_url: "{{ litellm_vkey_api_url }}"
@@ -279,9 +285,30 @@ vars:
 - Key auto-expires after duration period
 - Users only have access to specified models
 
+## Model Validation
+
+The collection automatically validates that requested models exist before creating keys:
+
+```bash
+# If you request a non-existent model
+ansible-playbook create_key.yml -e litellm_vkey_models='["gpt-4"]'
+```
+
+**Output:**
+```
+✗ Invalid model(s) requested
+
+Available models in this LiteLLM deployment:
+granite-3-2-8b-instruct, nomic-embed-text-v1-5, Llama-Guard-3-1B
+
+Please use one of the models listed above.
+```
+
+This prevents creating keys for models that don't exist in your LiteLLM deployment.
+
 ## License
 
-MIT
+GPL-2.0-or-later
 
 ## Author
 
